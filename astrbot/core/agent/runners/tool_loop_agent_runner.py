@@ -181,9 +181,21 @@ class ToolLoopAgentRunner(BaseAgentRunner[TContext]):
         self.final_llm_resp = llm_resp
         self._transition_state(AgentState.DONE)
         self.stats.end_time = time.time()
+        model_name = (self.req.model or "").lower()
+        deepseek_reasoning_models = {"deepseek-v4-pro", "deepseek-v4-flash"}
+        is_deepseek_reasoning = model_name in deepseek_reasoning_models
 
         parts = []
-        if llm_resp.reasoning_content or llm_resp.reasoning_signature:
+        if is_deepseek_reasoning:
+            # DeepSeek reasoner models require reasoning history to be kept,
+            # even when the response did not include reasoning content.
+            parts.append(
+                ThinkPart(
+                    think=llm_resp.reasoning_content or "",
+                    encrypted=llm_resp.reasoning_signature,
+                )
+            )
+        elif llm_resp.reasoning_content or llm_resp.reasoning_signature:
             parts.append(
                 ThinkPart(
                     think=llm_resp.reasoning_content,

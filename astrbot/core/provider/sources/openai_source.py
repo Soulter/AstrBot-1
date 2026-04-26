@@ -963,6 +963,8 @@ class ProviderOpenAIOfficial(Provider):
         """Finally convert the payload. Such as think part conversion, tool inject."""
         model = payloads.get("model", "").lower()
         is_gemini = "gemini" in model
+        deepseek_reasoning_models = {"deepseek-v4-pro", "deepseek-v4-flash"}
+        is_deepseek_v4_reasoning = model in deepseek_reasoning_models
 
         for message in payloads.get("messages", []):
             if message.get("role") == "assistant" and isinstance(
@@ -978,7 +980,11 @@ class ProviderOpenAIOfficial(Provider):
                 # Some providers (Grok, etc.) reject empty content lists.
                 # When all parts were think blocks, fall back to None.
                 message["content"] = new_content or None
-                if reasoning_content:
+                if is_deepseek_v4_reasoning:
+                    # DeepSeek reasoner models require the field on assistant
+                    # history messages, even when the reasoning content is empty.
+                    message["reasoning_content"] = reasoning_content
+                elif reasoning_content:
                     message["reasoning_content"] = reasoning_content
 
             # Gemini 的 function_response 要求 google.protobuf.Struct（即 JSON 对象），
